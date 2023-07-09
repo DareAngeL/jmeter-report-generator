@@ -1,4 +1,4 @@
-# jmeter-report-generator
+# Jmeter Report Generator
 An alternative desktop report generator for JMeter's CSV result.
 
 ## About
