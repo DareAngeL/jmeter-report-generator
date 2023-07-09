@@ -1,0 +1,543 @@
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi" 
+     xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
+  <!-- http://wixtoolset.org/documentation/manual/v3/xsd/wix/product.html -->
+  <Product Id="04C1CD49-49AB-4C14-BFF7-D498B67D0F7B" 
+           UpgradeCode="fdb8d086-b6f1-42f3-bc5b-90d9ef1f06dc"
+           Name = "Jmeter Report Generator (Machine - MSI)"
+           Version="1.0.0.0"
+           Manufacturer="Lee Systems Technology Ventures Inc."
+           Language="1033">
+    <!-- Only run this installer on Windows 7 or up (or if it"s already installed, I guess) -->
+    <!-- <Condition Message="This application is only supported on Windows 7 or higher.">
+      <![CDATA[Installed OR (VersionNT >= 601)]]>
+    </Condition> -->
+    <!-- http://wixtoolset.org/documentation/manual/v3/xsd/wix/package.html -->
+    <Package InstallerVersion="405"
+             Compressed="yes"
+             Comments="Windows Installer Package"
+             Platform="x86"
+             InstallScope="perMachine"/>
+    <!-- Don't allow downgrades -->
+    <MajorUpgrade AllowSameVersionUpgrades="yes" DowngradeErrorMessage="A later version of this product is already installed. Setup will now exit."/>
+    <!-- This will hide our Uninstall entry in Apps & Features. We doing this so
+    we can write our own which we can better control. -->
+    <Property Id="ARPSYSTEMCOMPONENT" Value="1" />
+    <!-- While the MSI package is hidden in Apps & Features, it can still be queried
+    via PowerShell and other means. To differentiate we give the public entry a slightly
+    different name to make admins life easier.  -->
+    <Property Id="VisibleProductName" Value="Jmeter Report Generator (Machine)" />
+    <!-- Tells the package to install perUser or perMachine. In case of perUser, all
+    files will be redirected to the user profile and all registry entries to HKCU. -->
+    <Property Id="MSIINSTALLPERUSER" Secure="yes" Value="0" />
+    <!-- Overides the default install mode. It solves a problem where
+    individual packaged files that have the same version as in previous
+    installed App version will be deleted if the files are in use during
+    this upgrade. Unfortunately this causes an ICE 40 warning during linking. -->
+    <Property Id="REINSTALLMODE" Value="emus" />
+    <!-- Overrides the default reboot behavior if files are in use during the upgrade.
+    By default, this will be set to "ReallySuppress" to make sure no unexpected reboot will happpen.-->
+    <Property Id="REBOOT" Value="ReallySuppress" />
+    <!-- Installlation level to use that determines which features are installed.
+    see guides/enduser.md to check which Install Level maps to which feature that will
+    correspondingly get installed.
+    If not set, this will default to "2" (Main Feature, Launch On Login) -->
+    <Property Id="INSTALLLEVEL" Value="2" />
+    <!-- Allows to customize the Windows user group that gets access rights on
+    the install folder in cas the auto-updater is installed. User that run the App
+    must be part of that user group to be able to auto-update. -->
+    <Property Id="UPDATERUSERGROUP" Value="Users" />
+    <!-- A property to define whether the auto-updater is enabled when the
+    feature gets installed. This way the update can be installed but also be disabled
+    by overwriting the default value.  -->
+    <Property Id="AUTOUPDATEENABLED" Value="1" />
+    <!-- Necessary registry search to find the install path which is used by the
+    PurgeOnUninstall action. Since this package can be installed perUser or perMachine,
+    we have to look in both places. First successful search wins. -->
+    <Property Id="INSTALLPATH">
+      <RegistrySearch Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{04C1CD49-49AB-4C14-BFF7-D498B67D0F7B}.msq"
+                      Root="HKCU" 
+                      Type="raw"
+                      Id="INSTALLPATH_REGSEARCH_HKCU"
+                      Name="InstallPath"
+                      Win64="no"/>
+      <RegistrySearch Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{04C1CD49-49AB-4C14-BFF7-D498B67D0F7B}.msq"
+                      Root="HKLM" 
+                      Type="raw"
+                      Id="INSTALLPATH_REGSEARCH_HKLM"
+                      Name="InstallPath"
+                      Win64="no"/>
+    </Property>
+    <!-- Lets change the product name depending on the perUser installMode. 
+    This way the user and admins can see in which scope the MSI was installed. -->
+    <SetProperty Action="SetVisibleProductName" Id="VisibleProductName" Sequence="both" Before="AppSearch"  Value="Jmeter Report Generator (User)">
+      <![CDATA[MSIINSTALLPERUSER = "1"]]>
+    </SetProperty>
+    <!-- Again we give thee MSI generaten entry a slightly different name to help 
+    differentiate between the public one and the invisible one. -->
+    <SetProperty Action="SetProductName" Id="ProductName" Sequence="both" Before="AppSearch"  Value="Jmeter Report Generator (User - MSI)">
+      <![CDATA[MSIINSTALLPERUSER = "1"]]>
+    </SetProperty>
+
+    <Media Id="1" Cabinet="product.cab" EmbedCab="yes"/>
+
+    <UI Id="UserInterface">
+      <TextStyle Id="WixUI_Font_Normal" FaceName="Tahoma" Size="8" />
+      <TextStyle Id="WixUI_Font_Bigger" FaceName="Tahoma" Size="12" />
+      <TextStyle Id="WixUI_Font_Title" FaceName="Tahoma" Size="9" Bold="yes" />
+      <Property Id="DefaultUIFont" Value="WixUI_Font_Normal" />
+      <Property Id="WixUI_Mode" Value="FeatureTree" />
+      <DialogRef Id="ErrorDlg" />
+      <DialogRef Id="FatalError" />
+      <DialogRef Id="FilesInUse" />
+      <DialogRef Id="MsiRMFilesInUse" />
+      <DialogRef Id="PrepareDlg" />
+      <DialogRef Id="ProgressDlg" />
+      <DialogRef Id="ResumeDlg" />
+      <DialogRef Id="UserExit" />
+      <Publish Dialog="ExitDialog" Control="Finish" Event="EndDialog" Value="Return" Order="999">1</Publish>
+      <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="CustomizeDlg">NOT Installed</Publish>
+      <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="VerifyReadyDlg">Installed AND PATCH</Publish>
+      <Publish Dialog="CustomizeDlg" Control="Back" Event="NewDialog" Value="MaintenanceTypeDlg" Order="1">Installed</Publish>
+      <Publish Dialog="CustomizeDlg" Control="Back" Event="NewDialog" Value="WelcomeDlg" Order="2">NOT Installed</Publish>
+      <Publish Dialog="CustomizeDlg" Control="Next" Event="NewDialog" Value="VerifyReadyDlg">1</Publish>
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="CustomizeDlg" Order="1">NOT Installed OR WixUI_InstallMode = "Change"</Publish>
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="MaintenanceTypeDlg" Order="2">Installed AND NOT PATCH</Publish>
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="WelcomeDlg" Order="3">Installed AND PATCH</Publish>
+      <Publish Dialog="MaintenanceWelcomeDlg" Control="Next" Event="NewDialog" Value="MaintenanceTypeDlg">1</Publish>
+      <Publish Dialog="MaintenanceTypeDlg" Control="ChangeButton" Event="NewDialog" Value="CustomizeDlg">1</Publish>
+      <Publish Dialog="MaintenanceTypeDlg" Control="RepairButton" Event="NewDialog" Value="VerifyReadyDlg">1</Publish>
+      <Publish Dialog="MaintenanceTypeDlg" Control="RemoveButton" Event="NewDialog" Value="VerifyReadyDlg">1</Publish>
+      <Publish Dialog="MaintenanceTypeDlg" Control="Back" Event="NewDialog" Value="MaintenanceWelcomeDlg">1</Publish>
+    </UI>
+    <UIRef Id="WixUI_Common" />
+
+
+    <!-- Step 2: Add files and directories -->
+    <Directory Id="TARGETDIR" Name="SourceDir">
+       <!-- Installation files to %PROGRAMFILES% -->
+      <Directory Id="ProgramFilesFolder">
+        <Directory Id="APPLICATIONROOTDIRECTORY" Name="Jmeter Report Generator">
+          <Directory Id="__0c6a7bad_f08f_4f40_9a63_b4d7abe13627" Name="app-1.0.0">
+            <Directory Id="_locales_28b10658_78de_4f87_a4b7_6a6f7aadf04b" Name="locales">
+              <Component Id="_locales_af.pak_29c7a245_2148_479f_b22c_e55e0eb1eaca" Guid="e4784baf-69f8-4828-b0dc-48c2be7a3352" Win64="no">
+                <File Name="af.pak" Id="_locales_af.pak_29c7a245_2148_479f_b22c_e55e0eb1eaca" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\af.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_am.pak_fdab9038_53b5_44f1_8e02_2a8dc1027ee9" Guid="8f68707d-e52b-4713-b202-1326b6453111" Win64="no">
+                <File Name="am.pak" Id="_locales_am.pak_fdab9038_53b5_44f1_8e02_2a8dc1027ee9" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\am.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_ar.pak_c63e0c10_cce5_4515_bc97_45e103cfbfc0" Guid="8cfe8ad8-5471-401b-bb03-380ccbdd99e5" Win64="no">
+                <File Name="ar.pak" Id="_locales_ar.pak_c63e0c10_cce5_4515_bc97_45e103cfbfc0" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\ar.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_bg.pak_28ec461b_cb1b_4f45_90bd_cbb72bb88fc8" Guid="84f4d687-48ab-430c-92a4-ea843b0215a0" Win64="no">
+                <File Name="bg.pak" Id="_locales_bg.pak_28ec461b_cb1b_4f45_90bd_cbb72bb88fc8" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\bg.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_bn.pak_52bad880_1053_4911_a805_ab6e332919d2" Guid="ec97273f-b027-4770-90bc-1961427567f9" Win64="no">
+                <File Name="bn.pak" Id="_locales_bn.pak_52bad880_1053_4911_a805_ab6e332919d2" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\bn.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_ca.pak_c4b6e46e_aa50_41d0_9235_ffe648214c5f" Guid="efbd533e-fbf6-4427-a6c6-e3ed4ec6cab5" Win64="no">
+                <File Name="ca.pak" Id="_locales_ca.pak_c4b6e46e_aa50_41d0_9235_ffe648214c5f" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\ca.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_cs.pak_85c77c1d_1f1a_45c3_a2ad_476ff5d8b9ac" Guid="767b8ae0-b23f-46c6-b1ed-1c00e03a07d0" Win64="no">
+                <File Name="cs.pak" Id="_locales_cs.pak_85c77c1d_1f1a_45c3_a2ad_476ff5d8b9ac" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\cs.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_da.pak_58161cb6_6610_4501_b1db_e9c17e9d6a78" Guid="66999ab6-beda-4657-bd06-25f2ec1457d9" Win64="no">
+                <File Name="da.pak" Id="_locales_da.pak_58161cb6_6610_4501_b1db_e9c17e9d6a78" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\da.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_de.pak_67391d88_1ac4_4075_b160_049153c114c1" Guid="0f9fea6d-2b4b-44ed-8421-bc6b8a08be5d" Win64="no">
+                <File Name="de.pak" Id="_locales_de.pak_67391d88_1ac4_4075_b160_049153c114c1" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\de.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_el.pak_c8735576_2121_4807_8088_b72033b99d7f" Guid="96b980dd-8300-4288-a99e-a7514ce0c1d3" Win64="no">
+                <File Name="el.pak" Id="_locales_el.pak_c8735576_2121_4807_8088_b72033b99d7f" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\el.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_en_GB.pak_e182dd74_9345_4156_ac1a_1fb7594d749e" Guid="3017e70a-5406-4abd-96ff-8c6e7c7eed3b" Win64="no">
+                <File Name="en-GB.pak" Id="_locales_en_GB.pak_e182dd74_9345_4156_ac1a_1fb7594d749e" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\en-GB.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_en_US.pak_c961d971_10cc_4cb9_982b_4828d632ada4" Guid="89b0cfe5-9217-4497-986a-117b94ef5f20" Win64="no">
+                <File Name="en-US.pak" Id="_locales_en_US.pak_c961d971_10cc_4cb9_982b_4828d632ada4" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\en-US.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_es_419.pak_5683d2a3_048c_4a8f_b8bb_b3c5ac969175" Guid="bd8b9010-e807-4813-aeca-aa6ff2925273" Win64="no">
+                <File Name="es-419.pak" Id="_locales_es_419.pak_5683d2a3_048c_4a8f_b8bb_b3c5ac969175" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\es-419.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_es.pak_dfa8cc67_c5e7_4fb7_beef_fa7f3cecae2e" Guid="55a0041f-6082-4706-aeb6-6b524cda9dbc" Win64="no">
+                <File Name="es.pak" Id="_locales_es.pak_dfa8cc67_c5e7_4fb7_beef_fa7f3cecae2e" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\es.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_et.pak_3c45c87d_f4f0_4615_b659_3a42f8c1cddc" Guid="68872f72-e534-4707-a17c-ca9884322f86" Win64="no">
+                <File Name="et.pak" Id="_locales_et.pak_3c45c87d_f4f0_4615_b659_3a42f8c1cddc" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\et.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_fa.pak_047002a7_82e5_42e1_96c2_0bef23268ee8" Guid="f0953b0c-197a-404a-ad0f-6578b7d572cf" Win64="no">
+                <File Name="fa.pak" Id="_locales_fa.pak_047002a7_82e5_42e1_96c2_0bef23268ee8" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\fa.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_fi.pak_3bf76df2_9e4e_4c67_a5e6_592eabe316ff" Guid="9b99d1be-5ed1-4d4e-bd6a-520bfb5234f7" Win64="no">
+                <File Name="fi.pak" Id="_locales_fi.pak_3bf76df2_9e4e_4c67_a5e6_592eabe316ff" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\fi.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_fil.pak_8f5d22dd_8eee_446d_9cc8_c0c808a9f801" Guid="a766abb4-61fd-45a1-8841-2116e4e396de" Win64="no">
+                <File Name="fil.pak" Id="_locales_fil.pak_8f5d22dd_8eee_446d_9cc8_c0c808a9f801" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\fil.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_fr.pak_be5bf119_5c17_46d9_8cc9_69960593d89d" Guid="00f562c9-bbbd-40b8-a710-7ab25b2cd8ca" Win64="no">
+                <File Name="fr.pak" Id="_locales_fr.pak_be5bf119_5c17_46d9_8cc9_69960593d89d" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\fr.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_gu.pak_2b321439_e98e_4450_bdaf_90d726283f73" Guid="8f9d3cfd-92cc-436d-ad34-f8bf28a1abaa" Win64="no">
+                <File Name="gu.pak" Id="_locales_gu.pak_2b321439_e98e_4450_bdaf_90d726283f73" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\gu.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_he.pak_547345d7_1311_438d_8d9a_0bdbe5c2f09b" Guid="0c9628fb-6e36-4db0-8d08-f92be764ac7c" Win64="no">
+                <File Name="he.pak" Id="_locales_he.pak_547345d7_1311_438d_8d9a_0bdbe5c2f09b" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\he.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_hi.pak_7d751c2e_bd7d_4eac_a757_935df029bf69" Guid="deb4acc9-8b4b-487c-bd85-c4bc3452cc60" Win64="no">
+                <File Name="hi.pak" Id="_locales_hi.pak_7d751c2e_bd7d_4eac_a757_935df029bf69" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\hi.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_hr.pak_340adb7f_90cc_4dde_acf1_5dd302383472" Guid="4d75e5ca-976e-4cbc-b69b-1910a652a4b8" Win64="no">
+                <File Name="hr.pak" Id="_locales_hr.pak_340adb7f_90cc_4dde_acf1_5dd302383472" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\hr.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_hu.pak_6d4d6060_24c0_46e2_85d8_992dd4f5e5dd" Guid="b2b14248-f492-4b7c-b928-87b5d9a51c1b" Win64="no">
+                <File Name="hu.pak" Id="_locales_hu.pak_6d4d6060_24c0_46e2_85d8_992dd4f5e5dd" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\hu.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_id.pak_e00bc784_14e6_4924_8c5a_867428ba5cfa" Guid="a0322236-7bbb-4d2e-82b5-3eaf67817918" Win64="no">
+                <File Name="id.pak" Id="_locales_id.pak_e00bc784_14e6_4924_8c5a_867428ba5cfa" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\id.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_it.pak_2b64d2e9_f5bb_41da_87db_b7df4bb25d65" Guid="64d42f18-e323-498f-b010-9cc6b3b6be88" Win64="no">
+                <File Name="it.pak" Id="_locales_it.pak_2b64d2e9_f5bb_41da_87db_b7df4bb25d65" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\it.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_ja.pak_aea7259d_81ea_4d46_8459_d5a60a545a69" Guid="dd418cf5-83bc-4d76-9f40-9f5358e00da1" Win64="no">
+                <File Name="ja.pak" Id="_locales_ja.pak_aea7259d_81ea_4d46_8459_d5a60a545a69" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\ja.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_kn.pak_6436b70d_2bbc_4c97_96b4_a37089d24598" Guid="69b684ed-da13-4673-8ed6-c5ec4baffb36" Win64="no">
+                <File Name="kn.pak" Id="_locales_kn.pak_6436b70d_2bbc_4c97_96b4_a37089d24598" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\kn.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_ko.pak_6c01b6a2_c917_4cbf_9c02_19fd2bed0b1b" Guid="83504a0e-9d2b-4af9-9e05-33a0eef5b5d8" Win64="no">
+                <File Name="ko.pak" Id="_locales_ko.pak_6c01b6a2_c917_4cbf_9c02_19fd2bed0b1b" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\ko.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_lt.pak_5ee113ab_56a4_4c9c_98fe_336d38e182a0" Guid="172a92a3-f2db-43cc-a2aa-6778f2d4e336" Win64="no">
+                <File Name="lt.pak" Id="_locales_lt.pak_5ee113ab_56a4_4c9c_98fe_336d38e182a0" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\lt.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_lv.pak_bc69e84b_0dbd_49eb_b4e2_c759a01a6f18" Guid="6ae9f433-024d-487d-b5b7-571afb71a332" Win64="no">
+                <File Name="lv.pak" Id="_locales_lv.pak_bc69e84b_0dbd_49eb_b4e2_c759a01a6f18" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\lv.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_ml.pak_1b29afc2_55cf_4dc4_8518_ed8d1fdbbd98" Guid="7de03e6c-7da9-4361-a443-2a677056b843" Win64="no">
+                <File Name="ml.pak" Id="_locales_ml.pak_1b29afc2_55cf_4dc4_8518_ed8d1fdbbd98" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\ml.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_mr.pak_31fa2473_b30e_4bd0_8533_5334421ea894" Guid="a53cafb5-466b-474d-856e-af48f779e633" Win64="no">
+                <File Name="mr.pak" Id="_locales_mr.pak_31fa2473_b30e_4bd0_8533_5334421ea894" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\mr.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_ms.pak_fa942df4_edfc_4a46_ae69_fcf9a60c6495" Guid="9fed4c52-45e8-4ca1-aab3-07c80660db45" Win64="no">
+                <File Name="ms.pak" Id="_locales_ms.pak_fa942df4_edfc_4a46_ae69_fcf9a60c6495" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\ms.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_nb.pak_5acdc998_025f_4de8_9f30_29dfbf3f9cc0" Guid="d2c82e5c-503a-46e1-b0a2-710d920260e8" Win64="no">
+                <File Name="nb.pak" Id="_locales_nb.pak_5acdc998_025f_4de8_9f30_29dfbf3f9cc0" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\nb.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_nl.pak_5533f51f_9859_445d_9525_b3f7929f39a4" Guid="5ed4b76a-65ad-46db-a1c1-a30c97e9bc6c" Win64="no">
+                <File Name="nl.pak" Id="_locales_nl.pak_5533f51f_9859_445d_9525_b3f7929f39a4" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\nl.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_pl.pak_d647d06c_be28_4475_85b8_db3e995b9f9a" Guid="385aef6c-8925-4739-aed2-3d21f0bfea64" Win64="no">
+                <File Name="pl.pak" Id="_locales_pl.pak_d647d06c_be28_4475_85b8_db3e995b9f9a" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\pl.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_pt_BR.pak_f6561b40_2dbc_4337_adb4_446b0e27442e" Guid="c4a7062d-9c15-4c4e-972b-bbdf1ff9a482" Win64="no">
+                <File Name="pt-BR.pak" Id="_locales_pt_BR.pak_f6561b40_2dbc_4337_adb4_446b0e27442e" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\pt-BR.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_pt_PT.pak_7f1ee913_5d74_4d75_a7d2_9d07c16fcd8b" Guid="063571ff-cb19-4668-ad52-311350b3ba69" Win64="no">
+                <File Name="pt-PT.pak" Id="_locales_pt_PT.pak_7f1ee913_5d74_4d75_a7d2_9d07c16fcd8b" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\pt-PT.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_ro.pak_f10d41bc_d127_4054_828c_b5272d0e10e2" Guid="3c290cfe-6f57-437c-94d9-1cfc96f0f2c8" Win64="no">
+                <File Name="ro.pak" Id="_locales_ro.pak_f10d41bc_d127_4054_828c_b5272d0e10e2" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\ro.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_ru.pak_042ce42f_3341_43c9_9fa1_b330462cb483" Guid="efaa37fc-4c41-4204-8970-128d931411f0" Win64="no">
+                <File Name="ru.pak" Id="_locales_ru.pak_042ce42f_3341_43c9_9fa1_b330462cb483" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\ru.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_sk.pak_0ab618ab_ebf9_439c_988a_3c02a1b9e741" Guid="e56527b1-d5fd-4980-b085-7468710dc0b3" Win64="no">
+                <File Name="sk.pak" Id="_locales_sk.pak_0ab618ab_ebf9_439c_988a_3c02a1b9e741" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\sk.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_sl.pak_285096c1_15c9_4cb4_9030_a1ef6e68e883" Guid="7eaa2e3d-a7bb-4df4-a3b3-5c23c80fa4e7" Win64="no">
+                <File Name="sl.pak" Id="_locales_sl.pak_285096c1_15c9_4cb4_9030_a1ef6e68e883" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\sl.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_sr.pak_eb0f9220_4317_41bc_bdde_b4099e60cfd0" Guid="7e5c04f2-70d4-4a1c-bf84-22bb287ab99b" Win64="no">
+                <File Name="sr.pak" Id="_locales_sr.pak_eb0f9220_4317_41bc_bdde_b4099e60cfd0" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\sr.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_sv.pak_5fa70279_082a_4b5d_9fc1_4730a43235b5" Guid="233e86d0-928b-4d43-b7db-cae2d97ffea1" Win64="no">
+                <File Name="sv.pak" Id="_locales_sv.pak_5fa70279_082a_4b5d_9fc1_4730a43235b5" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\sv.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_sw.pak_c148c88e_9dc9_4a86_b298_2e3004caa1d3" Guid="eb88d806-dfb2-4f53-826e-623d5993b17c" Win64="no">
+                <File Name="sw.pak" Id="_locales_sw.pak_c148c88e_9dc9_4a86_b298_2e3004caa1d3" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\sw.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_ta.pak_06c0d75a_217f_4cbb_b8dd_017014c63eb9" Guid="72083780-a1a0-47ca-818f-594def5003df" Win64="no">
+                <File Name="ta.pak" Id="_locales_ta.pak_06c0d75a_217f_4cbb_b8dd_017014c63eb9" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\ta.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_te.pak_2a7faf85_fae7_4f91_986d_b157c8e6e201" Guid="1274d487-57f6-4365-a44a-957727e09d53" Win64="no">
+                <File Name="te.pak" Id="_locales_te.pak_2a7faf85_fae7_4f91_986d_b157c8e6e201" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\te.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_th.pak_9cd2a26c_8789_4bc4_83b1_093519b3627e" Guid="9f35ff97-7232-4325-b952-acaeb62dd6c5" Win64="no">
+                <File Name="th.pak" Id="_locales_th.pak_9cd2a26c_8789_4bc4_83b1_093519b3627e" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\th.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_tr.pak_fdc68bc0_6f9e_43a9_9c84_5d427da5de6b" Guid="ec016d39-744d-4f5f-986b-0d84c56b2c76" Win64="no">
+                <File Name="tr.pak" Id="_locales_tr.pak_fdc68bc0_6f9e_43a9_9c84_5d427da5de6b" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\tr.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_uk.pak_4c4b5122_b9ae_45c3_8279_aab4c49b0fde" Guid="5f79485b-78b5-47fb-8cf9-1d05e42fc522" Win64="no">
+                <File Name="uk.pak" Id="_locales_uk.pak_4c4b5122_b9ae_45c3_8279_aab4c49b0fde" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\uk.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_ur.pak_79543e5e_9561_4c34_89eb_2ee406e27fe9" Guid="33bbb6a2-1d66-4102-a74b-fbdc9c7031a7" Win64="no">
+                <File Name="ur.pak" Id="_locales_ur.pak_79543e5e_9561_4c34_89eb_2ee406e27fe9" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\ur.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_vi.pak_5a6804c1_36e8_4c84_a2dc_4243ecfc37f3" Guid="0e1a6fad-05f9-46de-b8fb-f3f0bcd5b9c6" Win64="no">
+                <File Name="vi.pak" Id="_locales_vi.pak_5a6804c1_36e8_4c84_a2dc_4243ecfc37f3" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\vi.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_zh_CN.pak_3b7e784f_4b94_4331_8b77_d6b204d89463" Guid="c7c5e3eb-df56-4687-994a-792005d44ba9" Win64="no">
+                <File Name="zh-CN.pak" Id="_locales_zh_CN.pak_3b7e784f_4b94_4331_8b77_d6b204d89463" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\zh-CN.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+              <Component Id="_locales_zh_TW.pak_284bbe43_16de_4bc5_a2ad_fcba89717a54" Guid="6b216c2e-d69e-48c9-ad60-61e5a20be5c1" Win64="no">
+                <File Name="zh-TW.pak" Id="_locales_zh_TW.pak_284bbe43_16de_4bc5_a2ad_fcba89717a54" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\locales\zh-TW.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+            </Directory>
+            <Directory Id="_resources_242a3756_a81d_45f9_b193_32866b42dc3a" Name="resources">
+              <Component Id="_resources_app.asar_b34a0aac_16bf_47e3_98e2_716800eac6d7" Guid="b58dfd48-bfdc-427d-a74f-4197c6d6c635" Win64="no">
+                <File Name="app.asar" Id="_resources_app.asar_b34a0aac_16bf_47e3_98e2_716800eac6d7" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\resources\app.asar" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+              </Component>
+            </Directory>            <Component Id="_LICENSE_248490e4_709a_4c40_92f7_edd81c3ba8f6" Guid="f2bcfaed-09dd-4d00-b69c-469abc4ce4d6" Win64="no">
+              <File Name="LICENSE" Id="_LICENSE_248490e4_709a_4c40_92f7_edd81c3ba8f6" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\LICENSE" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+            </Component>
+            <Component Id="_LICENSES.chromium.html_a68989c3_b355_4e37_adaf_a9fbb3b3870f" Guid="5458ab82-9951-404d-85d9-a1c4010f935a" Win64="no">
+              <File Name="LICENSES.chromium.html" Id="_LICENSES.chromium.html_a68989c3_b355_4e37_adaf_a9fbb3b3870f" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\LICENSES.chromium.html" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+            </Component>
+            <Component Id="_Squirrel_Unset.log_040aced7_01e3_485f_bfcd_986e11f97c52" Guid="3d1cbf76-0420-4091-a865-dccd6f87ec0c" Win64="no">
+              <File Name="Squirrel-Unset.log" Id="_Squirrel_Unset.log_040aced7_01e3_485f_bfcd_986e11f97c52" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\Squirrel-Unset.log" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+            </Component>
+            <Component Id="_Squirrel.exe_675d20a9_8e20_454f_8042_cc3f5f4d85cc" Guid="ac55b9ad-29cb-4a79-b520-d959cd258f51" Win64="no">
+              <File Name="Squirrel.exe" Id="_Squirrel.exe_675d20a9_8e20_454f_8042_cc3f5f4d85cc" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\Squirrel.exe" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+            </Component>
+            <Component Id="_chrome_100_percent.pak_3f9c47a8_6949_4772_bcf4_e9ba51010b86" Guid="a9c78e3f-0f88-49ac-a7b2-5a1c20760470" Win64="no">
+              <File Name="chrome_100_percent.pak" Id="_chrome_100_percent.pak_3f9c47a8_6949_4772_bcf4_e9ba51010b86" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\chrome_100_percent.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+            </Component>
+            <Component Id="_chrome_200_percent.pak_d22d3006_2702_47fb_9c47_6c113866d86b" Guid="f18844c6-8a17-423c-90d3-dea87ac25c2b" Win64="no">
+              <File Name="chrome_200_percent.pak" Id="_chrome_200_percent.pak_d22d3006_2702_47fb_9c47_6c113866d86b" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\chrome_200_percent.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+            </Component>
+            <Component Id="_d3dcompiler_47.dll_0d23535e_1392_4dc9_9d06_49c020084861" Guid="9670b784-e570-4adf-943a-aeb02c618529" Win64="no">
+              <File Name="d3dcompiler_47.dll" Id="_d3dcompiler_47.dll_0d23535e_1392_4dc9_9d06_49c020084861" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\d3dcompiler_47.dll" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+            </Component>
+            <Component Id="_ffmpeg.dll_03efa475_bbe5_447f_bb2e_a4c01abe6bd6" Guid="405a4bda-1669-47d1-9fb5-76831ae3679d" Win64="no">
+              <File Name="ffmpeg.dll" Id="_ffmpeg.dll_03efa475_bbe5_447f_bb2e_a4c01abe6bd6" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\ffmpeg.dll" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+            </Component>
+            <Component Id="_icudtl.dat_0dd90655_251c_4669_b3d4_55e87c876c80" Guid="8c8f1dbd-16e6-47e8-ab57-39614e1a70b3" Win64="no">
+              <File Name="icudtl.dat" Id="_icudtl.dat_0dd90655_251c_4669_b3d4_55e87c876c80" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\icudtl.dat" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+            </Component>
+            <Component Id="_jmeter_report_generator.exe_68259e37_567c_418b_88b9_b8397469602b" Guid="a017918a-598d-411a-a40b-fea753094048" Win64="no">
+              <File Name="jmeter-report-generator.exe" Id="_jmeter_report_generator.exe_68259e37_567c_418b_88b9_b8397469602b" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\jmeter-report-generator.exe" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+            </Component>
+            <Component Id="_libEGL.dll_77547281_8cd7_4fe8_807e_ac4e7778c655" Guid="5b2fc6da-ac95-4c60-b8d4-28e9f1fbc63c" Win64="no">
+              <File Name="libEGL.dll" Id="_libEGL.dll_77547281_8cd7_4fe8_807e_ac4e7778c655" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\libEGL.dll" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+            </Component>
+            <Component Id="_libGLESv2.dll_70442cd4_d298_45b0_abfc_a01b9b83db67" Guid="9bad0ca0-ceb9-4863-ae87-8e95f48747ec" Win64="no">
+              <File Name="libGLESv2.dll" Id="_libGLESv2.dll_70442cd4_d298_45b0_abfc_a01b9b83db67" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\libGLESv2.dll" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+            </Component>
+            <Component Id="_resources.pak_a24e1744_c06e_406d_9630_1adaf0a349ae" Guid="e7e06380-785a-4f9c-a923-0d95fc3e0bf0" Win64="no">
+              <File Name="resources.pak" Id="_resources.pak_a24e1744_c06e_406d_9630_1adaf0a349ae" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\resources.pak" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+            </Component>
+            <Component Id="_snapshot_blob.bin_1c13fa48_600b_4ed3_a1e1_a364baee4736" Guid="fceaa0ef-2e46-4f2e-9b5b-f6def1b96c63" Win64="no">
+              <File Name="snapshot_blob.bin" Id="_snapshot_blob.bin_1c13fa48_600b_4ed3_a1e1_a364baee4736" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\snapshot_blob.bin" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+            </Component>
+            <Component Id="_v8_context_snapshot.bin_bd5dfd8f_88ca_40ad_8053_282e3f080e89" Guid="9a607c7c-8e1a-4202-a73c-27809ea8e213" Win64="no">
+              <File Name="v8_context_snapshot.bin" Id="_v8_context_snapshot.bin_bd5dfd8f_88ca_40ad_8053_282e3f080e89" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\v8_context_snapshot.bin" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+            </Component>
+            <Component Id="_version_6ecaf5b2_8f27_4e4b_a97c_7651e644cc9e" Guid="9c698de8-73eb-43e6-bdce-77f7fb2947b2" Win64="no">
+              <File Name="version" Id="_version_6ecaf5b2_8f27_4e4b_a97c_7651e644cc9e" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\version" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+            </Component>
+            <Component Id="_vk_swiftshader.dll_8ad5f84d_52b0_42b2_9749_5648b6658f4c" Guid="b4bdde67-25cd-49eb-b228-c501cfeedd0e" Win64="no">
+              <File Name="vk_swiftshader.dll" Id="_vk_swiftshader.dll_8ad5f84d_52b0_42b2_9749_5648b6658f4c" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\vk_swiftshader.dll" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+            </Component>
+            <Component Id="_vk_swiftshader_icd.json_ff508dc8_4d40_41d9_a968_f06e846d35ae" Guid="23d658f3-7adb-46ab-8f1f-ec535d5e2606" Win64="no">
+              <File Name="vk_swiftshader_icd.json" Id="_vk_swiftshader_icd.json_ff508dc8_4d40_41d9_a968_f06e846d35ae" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\vk_swiftshader_icd.json" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+            </Component>
+            <Component Id="_vulkan_1.dll_ac77c819_ac0b_4406_a646_1895a4b0c5f7" Guid="31358be5-dd51-4691-837a-1093e76ce6aa" Win64="no">
+              <File Name="vulkan-1.dll" Id="_vulkan_1.dll_ac77c819_ac0b_4406_a646_1895a4b0c5f7" Source="G:\Work\Others\JMeter\apache-jmeter-5.5\bin\ESS Load Testing\SUMISHO-Internal extra testing\my-app\out\make\zip\win32\x64\vulkan-1.dll" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+            </Component>
+          </Directory>
+          <Component Id="_JmeterReportGenerator.exe_fc4ee69d_910e_4dd1_bb58_33ce6ae974db" Guid="3b4f2a3a-634b-46e7-8b19-a878cfda68aa" Win64="no">
+            <File Name="JmeterReportGenerator.exe" Id="_JmeterReportGenerator.exe_fc4ee69d_910e_4dd1_bb58_33ce6ae974db" Source="C:\Users\maste\AppData\Local\Temp\JmeterReportGeneratorLFJ0gp\JmeterReportGenerator.exe" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+          </Component>
+          <Component Id="_.installInfo.json_61b99c11_0d8d_44e5_b4a7_69dfda261011" Guid="0049026d-5ae1-47c3-8315-4884dae672e3" Win64="no">
+            <File Name=".installInfo.json" Id="_.installInfo.json_61b99c11_0d8d_44e5_b4a7_69dfda261011" Source="C:\Users\maste\AppData\Local\Temp\.installInfoTawoRh\.installInfo.json" KeyPath="yes" Checksum="yes" ProcessorArchitecture="x86"/>
+          </Component>
+          <Component Id="RegistryInstallPath" Guid="64f1fc78-c7ae-4c21-b89e-5fed06927dd7" Win64="no">
+            <RegistryKey Root="HKMU" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{04C1CD49-49AB-4C14-BFF7-D498B67D0F7B}.msq" ForceCreateOnInstall="no" ForceDeleteOnUninstall="yes">
+              <RegistryValue Name="InstallPath" Type="string" Value="[APPLICATIONROOTDIRECTORY]" KeyPath="yes"/>
+            </RegistryKey>
+          </Component>
+          <Component Id="UninstallDisplayName" Guid="022112d7-ba73-40b5-9d2c-7f4ce2ca2822" Win64="no">
+            <RegistryKey Root="HKMU" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{04C1CD49-49AB-4C14-BFF7-D498B67D0F7B}.msq" ForceCreateOnInstall="no" ForceDeleteOnUninstall="yes">
+              <RegistryValue Name="DisplayName" Type="string" Value="[VisibleProductName]" KeyPath="yes"/>
+            </RegistryKey>
+          </Component>
+          <Component Id="UninstallPublisher" Guid="d3072bb3-1d48-41b3-8b62-e3633259e0fd" Win64="no">
+            <RegistryKey Root="HKMU" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{04C1CD49-49AB-4C14-BFF7-D498B67D0F7B}.msq" ForceCreateOnInstall="no" ForceDeleteOnUninstall="yes">
+              <RegistryValue Name="Publisher" Type="string" Value="Lee Systems Technology Ventures Inc." KeyPath="yes"/>
+            </RegistryKey>
+          </Component>
+          <Component Id="UninstallDisplayVersion" Guid="7101147b-b361-492b-8747-6a8f6c533afa" Win64="no">
+            <RegistryKey Root="HKMU" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{04C1CD49-49AB-4C14-BFF7-D498B67D0F7B}.msq" ForceCreateOnInstall="no" ForceDeleteOnUninstall="yes">
+              <RegistryValue Name="DisplayVersion" Type="string" Value="1.0.0" KeyPath="yes"/>
+            </RegistryKey>
+          </Component>
+          <Component Id="UninstallModifyString" Guid="97f47efa-3b13-4c73-8efe-de7a5aaa2a3a" Win64="no">
+            <RegistryKey Root="HKMU" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{04C1CD49-49AB-4C14-BFF7-D498B67D0F7B}.msq" ForceCreateOnInstall="no" ForceDeleteOnUninstall="yes">
+              <RegistryValue Name="ModifyPath" Type="expandable" Value="MsiExec.exe /I {04C1CD49-49AB-4C14-BFF7-D498B67D0F7B}" KeyPath="yes"/>
+            </RegistryKey>
+          </Component>
+          <Component Id="UninstallString" Guid="1843ff69-7a61-4224-b4b6-afa7c5949131" Win64="no">
+            <RegistryKey Root="HKMU" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{04C1CD49-49AB-4C14-BFF7-D498B67D0F7B}.msq" ForceCreateOnInstall="no" ForceDeleteOnUninstall="yes">
+              <RegistryValue Name="UninstallString" Type="expandable" Value="MsiExec.exe /X {04C1CD49-49AB-4C14-BFF7-D498B67D0F7B}" KeyPath="yes"/>
+            </RegistryKey>
+          </Component>
+          <Component Id="UninstallDisplayIcon" Guid="8ae8d408-2bdb-4cf3-9239-d8aecc29f95f" Win64="no">
+            <RegistryKey Root="HKMU" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{04C1CD49-49AB-4C14-BFF7-D498B67D0F7B}.msq" ForceCreateOnInstall="no" ForceDeleteOnUninstall="yes">
+              <RegistryValue Name="DisplayIcon" Type="expandable" Value="[SystemFolder]msiexec.exe" KeyPath="yes"/>
+            </RegistryKey>
+          </Component>
+        </Directory>
+      </Directory>
+
+      <!-- Desktop -->
+      <Directory Id="DesktopFolder" Name="Desktop" />
+
+      <!-- Start Menu -->
+      <Directory Id="ProgramMenuFolder">
+        <Directory Id="ApplicationProgramsFolder" Name="Lee Systems Technology Ventures Inc."/>
+      </Directory>
+    </Directory>
+
+    <!-- Step 3: Add app to Start Menu -->
+    <DirectoryRef Id="ApplicationProgramsFolder">
+      <Component Id="ApplicationShortcut" Guid="34482c36-af4a-4fa1-9e1f-bb2c10955335" Win64="no">
+        <Shortcut Id="ApplicationStartMenuShortcut"
+                  Name="Jmeter Report Generator"
+                  Description="Jmeter report generator setup"
+                  Target="[APPLICATIONROOTDIRECTORY]JmeterReportGenerator.exe"
+                  WorkingDirectory="APPLICATIONROOTDIRECTORY">
+          <ShortcutProperty Key="System.AppUserModel.ID" Value="com.squirrel.jmeter report generator.jmeterreportgenerator"/>
+        </Shortcut>
+        <RemoveFolder Id="ApplicationProgramsFolder" On="uninstall"/>
+        <RegistryValue Root="HKCU"
+                       Key="Software\Microsoft\Jmeter Report Generator"
+                       Name="installed"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes"/>
+      </Component>
+    </DirectoryRef>
+
+   <!-- Step 4: Add app desktop shortcut --> 
+    <DirectoryRef Id="DesktopFolder">
+      <Component Id="DesktopShortcut" Guid="451f074d-8c19-4da7-abfa-86a15892d177" >
+          <Shortcut Id="MyDesktopShortcut"
+                    Name="Jmeter Report Generator"
+                    Description="Jmeter report generator setup"
+                    Target="[APPLICATIONROOTDIRECTORY]JmeterReportGenerator.exe"
+                    WorkingDirectory="APPLICATIONROOTDIRECTORY"/>
+          <RegistryValue Root="HKCU"
+                    Key="Software\Microsoft\Jmeter Report Generator"
+                    Name="installed"
+                    Type="integer"
+                    Value="1"
+                    KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+
+
+    <!-- Lets cleanup any files that are were not part of the initial install
+    via this MSI. Such as newer versions installed by the auto-updater. -->
+    <DirectoryRef Id="APPLICATIONROOTDIRECTORY">
+      <Component Id="PurgeOnUninstall" Guid="ebdb5f99-b33d-44b2-afb5-558070d934b5" Win64="no">
+        <CreateFolder/>
+        <util:RemoveFolderEx On="uninstall" Property="INSTALLPATH" />
+      </Component>
+    </DirectoryRef>
+
+    <Feature Id="Complete" Title="Jmeter Report Generator (1.0.0)" Description="The complete package." Display="expand" Level="1" ConfigurableDirectory="APPLICATIONROOTDIRECTORY">
+      <!-- Step 5: Tell WiX to install the files -->
+      <Feature Id="MainApplication" Title="Main Application" Level="1" Description="The main components to run the applications." >
+        <ComponentRef Id="_locales_af.pak_29c7a245_2148_479f_b22c_e55e0eb1eaca" />
+        <ComponentRef Id="_locales_am.pak_fdab9038_53b5_44f1_8e02_2a8dc1027ee9" />
+        <ComponentRef Id="_locales_ar.pak_c63e0c10_cce5_4515_bc97_45e103cfbfc0" />
+        <ComponentRef Id="_locales_bg.pak_28ec461b_cb1b_4f45_90bd_cbb72bb88fc8" />
+        <ComponentRef Id="_locales_bn.pak_52bad880_1053_4911_a805_ab6e332919d2" />
+        <ComponentRef Id="_locales_ca.pak_c4b6e46e_aa50_41d0_9235_ffe648214c5f" />
+        <ComponentRef Id="_locales_cs.pak_85c77c1d_1f1a_45c3_a2ad_476ff5d8b9ac" />
+        <ComponentRef Id="_locales_da.pak_58161cb6_6610_4501_b1db_e9c17e9d6a78" />
+        <ComponentRef Id="_locales_de.pak_67391d88_1ac4_4075_b160_049153c114c1" />
+        <ComponentRef Id="_locales_el.pak_c8735576_2121_4807_8088_b72033b99d7f" />
+        <ComponentRef Id="_locales_en_GB.pak_e182dd74_9345_4156_ac1a_1fb7594d749e" />
+        <ComponentRef Id="_locales_en_US.pak_c961d971_10cc_4cb9_982b_4828d632ada4" />
+        <ComponentRef Id="_locales_es_419.pak_5683d2a3_048c_4a8f_b8bb_b3c5ac969175" />
+        <ComponentRef Id="_locales_es.pak_dfa8cc67_c5e7_4fb7_beef_fa7f3cecae2e" />
+        <ComponentRef Id="_locales_et.pak_3c45c87d_f4f0_4615_b659_3a42f8c1cddc" />
+        <ComponentRef Id="_locales_fa.pak_047002a7_82e5_42e1_96c2_0bef23268ee8" />
+        <ComponentRef Id="_locales_fi.pak_3bf76df2_9e4e_4c67_a5e6_592eabe316ff" />
+        <ComponentRef Id="_locales_fil.pak_8f5d22dd_8eee_446d_9cc8_c0c808a9f801" />
+        <ComponentRef Id="_locales_fr.pak_be5bf119_5c17_46d9_8cc9_69960593d89d" />
+        <ComponentRef Id="_locales_gu.pak_2b321439_e98e_4450_bdaf_90d726283f73" />
+        <ComponentRef Id="_locales_he.pak_547345d7_1311_438d_8d9a_0bdbe5c2f09b" />
+        <ComponentRef Id="_locales_hi.pak_7d751c2e_bd7d_4eac_a757_935df029bf69" />
+        <ComponentRef Id="_locales_hr.pak_340adb7f_90cc_4dde_acf1_5dd302383472" />
+        <ComponentRef Id="_locales_hu.pak_6d4d6060_24c0_46e2_85d8_992dd4f5e5dd" />
+        <ComponentRef Id="_locales_id.pak_e00bc784_14e6_4924_8c5a_867428ba5cfa" />
+        <ComponentRef Id="_locales_it.pak_2b64d2e9_f5bb_41da_87db_b7df4bb25d65" />
+        <ComponentRef Id="_locales_ja.pak_aea7259d_81ea_4d46_8459_d5a60a545a69" />
+        <ComponentRef Id="_locales_kn.pak_6436b70d_2bbc_4c97_96b4_a37089d24598" />
+        <ComponentRef Id="_locales_ko.pak_6c01b6a2_c917_4cbf_9c02_19fd2bed0b1b" />
+        <ComponentRef Id="_locales_lt.pak_5ee113ab_56a4_4c9c_98fe_336d38e182a0" />
+        <ComponentRef Id="_locales_lv.pak_bc69e84b_0dbd_49eb_b4e2_c759a01a6f18" />
+        <ComponentRef Id="_locales_ml.pak_1b29afc2_55cf_4dc4_8518_ed8d1fdbbd98" />
+        <ComponentRef Id="_locales_mr.pak_31fa2473_b30e_4bd0_8533_5334421ea894" />
+        <ComponentRef Id="_locales_ms.pak_fa942df4_edfc_4a46_ae69_fcf9a60c6495" />
+        <ComponentRef Id="_locales_nb.pak_5acdc998_025f_4de8_9f30_29dfbf3f9cc0" />
+        <ComponentRef Id="_locales_nl.pak_5533f51f_9859_445d_9525_b3f7929f39a4" />
+        <ComponentRef Id="_locales_pl.pak_d647d06c_be28_4475_85b8_db3e995b9f9a" />
+        <ComponentRef Id="_locales_pt_BR.pak_f6561b40_2dbc_4337_adb4_446b0e27442e" />
+        <ComponentRef Id="_locales_pt_PT.pak_7f1ee913_5d74_4d75_a7d2_9d07c16fcd8b" />
+        <ComponentRef Id="_locales_ro.pak_f10d41bc_d127_4054_828c_b5272d0e10e2" />
+        <ComponentRef Id="_locales_ru.pak_042ce42f_3341_43c9_9fa1_b330462cb483" />
+        <ComponentRef Id="_locales_sk.pak_0ab618ab_ebf9_439c_988a_3c02a1b9e741" />
+        <ComponentRef Id="_locales_sl.pak_285096c1_15c9_4cb4_9030_a1ef6e68e883" />
+        <ComponentRef Id="_locales_sr.pak_eb0f9220_4317_41bc_bdde_b4099e60cfd0" />
+        <ComponentRef Id="_locales_sv.pak_5fa70279_082a_4b5d_9fc1_4730a43235b5" />
+        <ComponentRef Id="_locales_sw.pak_c148c88e_9dc9_4a86_b298_2e3004caa1d3" />
+        <ComponentRef Id="_locales_ta.pak_06c0d75a_217f_4cbb_b8dd_017014c63eb9" />
+        <ComponentRef Id="_locales_te.pak_2a7faf85_fae7_4f91_986d_b157c8e6e201" />
+        <ComponentRef Id="_locales_th.pak_9cd2a26c_8789_4bc4_83b1_093519b3627e" />
+        <ComponentRef Id="_locales_tr.pak_fdc68bc0_6f9e_43a9_9c84_5d427da5de6b" />
+        <ComponentRef Id="_locales_uk.pak_4c4b5122_b9ae_45c3_8279_aab4c49b0fde" />
+        <ComponentRef Id="_locales_ur.pak_79543e5e_9561_4c34_89eb_2ee406e27fe9" />
+        <ComponentRef Id="_locales_vi.pak_5a6804c1_36e8_4c84_a2dc_4243ecfc37f3" />
+        <ComponentRef Id="_locales_zh_CN.pak_3b7e784f_4b94_4331_8b77_d6b204d89463" />
+        <ComponentRef Id="_locales_zh_TW.pak_284bbe43_16de_4bc5_a2ad_fcba89717a54" />
+        <ComponentRef Id="_resources_app.asar_b34a0aac_16bf_47e3_98e2_716800eac6d7" />
+        <ComponentRef Id="_LICENSE_248490e4_709a_4c40_92f7_edd81c3ba8f6" />
+        <ComponentRef Id="_LICENSES.chromium.html_a68989c3_b355_4e37_adaf_a9fbb3b3870f" />
+        <ComponentRef Id="_Squirrel_Unset.log_040aced7_01e3_485f_bfcd_986e11f97c52" />
+        <ComponentRef Id="_Squirrel.exe_675d20a9_8e20_454f_8042_cc3f5f4d85cc" />
+        <ComponentRef Id="_chrome_100_percent.pak_3f9c47a8_6949_4772_bcf4_e9ba51010b86" />
+        <ComponentRef Id="_chrome_200_percent.pak_d22d3006_2702_47fb_9c47_6c113866d86b" />
+        <ComponentRef Id="_d3dcompiler_47.dll_0d23535e_1392_4dc9_9d06_49c020084861" />
+        <ComponentRef Id="_ffmpeg.dll_03efa475_bbe5_447f_bb2e_a4c01abe6bd6" />
+        <ComponentRef Id="_icudtl.dat_0dd90655_251c_4669_b3d4_55e87c876c80" />
+        <ComponentRef Id="_jmeter_report_generator.exe_68259e37_567c_418b_88b9_b8397469602b" />
+        <ComponentRef Id="_libEGL.dll_77547281_8cd7_4fe8_807e_ac4e7778c655" />
+        <ComponentRef Id="_libGLESv2.dll_70442cd4_d298_45b0_abfc_a01b9b83db67" />
+        <ComponentRef Id="_resources.pak_a24e1744_c06e_406d_9630_1adaf0a349ae" />
+        <ComponentRef Id="_snapshot_blob.bin_1c13fa48_600b_4ed3_a1e1_a364baee4736" />
+        <ComponentRef Id="_v8_context_snapshot.bin_bd5dfd8f_88ca_40ad_8053_282e3f080e89" />
+        <ComponentRef Id="_version_6ecaf5b2_8f27_4e4b_a97c_7651e644cc9e" />
+        <ComponentRef Id="_vk_swiftshader.dll_8ad5f84d_52b0_42b2_9749_5648b6658f4c" />
+        <ComponentRef Id="_vk_swiftshader_icd.json_ff508dc8_4d40_41d9_a968_f06e846d35ae" />
+        <ComponentRef Id="_vulkan_1.dll_ac77c819_ac0b_4406_a646_1895a4b0c5f7" />
+        <ComponentRef Id="_JmeterReportGenerator.exe_fc4ee69d_910e_4dd1_bb58_33ce6ae974db" />
+        <ComponentRef Id="_.installInfo.json_61b99c11_0d8d_44e5_b4a7_69dfda261011" />
+        <ComponentRef Id="RegistryInstallPath" />
+        <ComponentRef Id="UninstallDisplayName" />
+        <ComponentRef Id="UninstallPublisher" />
+        <ComponentRef Id="UninstallDisplayVersion" />
+        <ComponentRef Id="UninstallModifyString" />
+        <ComponentRef Id="UninstallString" />
+        <ComponentRef Id="UninstallDisplayIcon" />
+        <ComponentRef Id="ApplicationShortcut" />
+        <ComponentRef Id="DesktopShortcut" />
+        <ComponentRef Id="PurgeOnUninstall" />
+      </Feature> 
+    </Feature> 
+  </Product>
+</Wix>

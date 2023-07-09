@@ -1,0 +1,26 @@
+
+                Success: 97.36%
+                Fails: 2.64%
+    
+                There are [58,383] 200
+			There are [234] 500
+			There are [3] Non HTTP response code: org.apache.http.NoHttpResponseException
+			There are [456] Non HTTP response code: org.apache.http.client.ClientProtocolException
+			There are [892] Non HTTP response code: org.apache.http.conn.HttpHostConnectException
+			There are [1] undefined
+    
+                Top 5 sample that has the most errors: 
+                2022-00022 Time In (Non HTTP response code: org.apache.http.client.ClientProtocolException)
+			2022-00221 Open Time Clock (Non HTTP response code: org.apache.http.client.ClientProtocolException)
+			2022-00138 Employee Schedule By Shift Page (Non HTTP response code: org.apache.http.client.ClientProtocolException)
+			2023-00475 Time Out (Non HTTP response code: org.apache.http.client.ClientProtocolException)
+			2022-00593 Login (Non HTTP response code: org.apache.http.conn.HttpHostConnectException)
+    
+                Top 3 response codes:
+                Non HTTP response code: org.apache.http.conn.HttpHostConnectException (56.24% in errors/1.49% in all samples)
+			Non HTTP response code: org.apache.http.client.ClientProtocolException (28.75% in errors/0.76% in all samples)
+			500 (14.75% in errors/0.39% in all samples)
+    
+                Max response time: 
+                2022-00201 Subordinate Planner Page: 137,152ms (2.29 minutes)
+                

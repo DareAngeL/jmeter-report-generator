@@ -1,0 +1,51 @@
+.report-view-container {
+    position: fixed;
+    overflow-y: auto;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: #f0f0f0;
+    z-index: 1;
+    animation: report-view-container-animation 0.5s ease-in-out;
+}
+
+.report-view-container.reverse {
+    animation: report-view-container-animation-reverse 0.5s ease-in-out !important;
+}
+
+.report-view-root {
+    background: #fff;
+    box-shadow: 0 0 1rem #d4d4d4;
+
+}
+
+.report-view-root > p {
+    color: #181818;
+}
+
+@keyframes report-view-container-animation {
+    from {
+        opacity: 0;
+        scale: (0.5, 0.5);
+        transform: translateY(100%);
+    }
+    to {
+        opacity: 1;
+        scale: (1, 1);
+        transform: translateY(0%);
+    }
+}
+
+@keyframes report-view-container-animation-reverse {
+    from {
+        opacity: 1;
+        scale: (1, 1);
+        transform: translateY(0%);
+    }
+    to {
+        opacity: 0;
+        scale: (0.5, 0.5);
+        transform: translateY(100%);
+    }
+}
