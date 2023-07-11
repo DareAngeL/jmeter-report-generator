@@ -45,7 +45,7 @@ viewReportBtn.addEventListener('click', () => {
         <button id="go-back-btn" class="btn btn-outline-dark"><- Go Back</button>
         <h2 class="mt-3">Generated Report</h2>
         <div class="report-view-root p-3 rounded-2">
-        <label id="report-view-txt">${generatedReport}</label>
+        <pre id="report-view-txt">${generatedReport}</pre>
         </div>
     </div>
     `;
