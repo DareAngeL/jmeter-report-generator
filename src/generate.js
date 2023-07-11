@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import Papa from 'papaparse';
 import { log } from '.';
 const { ipcRenderer } = window.require('electron');
@@ -40,6 +41,7 @@ export default function Generate(file, onCompleted) {
         const responseCodes = {};
         const labelCounts = {};
         const labelResponseCodeCounts = {};
+        const responseCodeLabelCounts = {};
         const errResponseCodeCounts = {};
         const responseTime = {};
 
@@ -50,6 +52,11 @@ export default function Generate(file, onCompleted) {
             step: function (results, parser) {
                 rows++;
                 const row = results.data;
+
+                if (row.label) {
+                    // remove the numbers and dash. example: 2022-00004 Time In
+                    row.label = row.label.replace(/[\d-]/g, '').trim();
+                }
 
                 responseTime[row.label] = (responseTime[row.label] || 0) < row.elapsed ? row.elapsed : responseTime[row.label]
 
@@ -67,8 +74,14 @@ export default function Generate(file, onCompleted) {
                         errResponseCodeCounts[row.responseCode] = 0;
                     }
 
+                    if (!responseCodeLabelCounts[row.responseCode]) {
+                        responseCodeLabelCounts[row.responseCode] = {};
+                    }
+
                     errResponseCodeCounts[row.responseCode] = (errResponseCodeCounts[row.responseCode] || 0) + 1;
                     labelResponseCodeCounts[row.label][row.responseCode] = (labelResponseCodeCounts[row.label][row.responseCode] || 0) + 1;
+                    
+                    responseCodeLabelCounts[row.responseCode][row.label] = (responseCodeLabelCounts[row.responseCode][row.label] || 0) + 1;
                 }
             },
             complete: async function (results) {
@@ -87,14 +100,24 @@ export default function Generate(file, onCompleted) {
 
                 log('Getting the top 3 response codes...', true);
 
+                // sort the responseCodeLabelCounts from highest to lowest
+                let responseCodeLabelCountsMapped = '';
+                Object.entries(responseCodeLabelCounts).forEach(([key, value]) => {
+                    responseCodeLabelCounts[key] = Object.entries(value)
+                        .sort((a, b) => b[1] - a[1])
+                        .reduce((r, [k, v]) => ({ ...r, [k]: v }), {});
+                });
+
                 // get all the sum of the errResponseCodeCounts
                 const errSum = Object.values(errResponseCodeCounts).reduce((a, b) => a + b, 0);
 
                 let top3ResponseCodes = Object.entries(errResponseCodeCounts)
                     .sort((a, b) => b[1] - a[1])
                     .slice(0, 3)
-                    .map((entry, i) => `${i+1}. ${entry[0]} (${((entry[1] / errSum) * 100).toFixed(2)}% in errors/${((entry[1] / rows) * 100).toFixed(2)}% in all samples)`);
-
+                    .map((entry, i) => 
+                        `\t${i+1}. ${entry[0]} (${((entry[1] / errSum) * 100).toFixed(2)}% in errors/${((entry[1] / rows) * 100).toFixed(2)}% in all samples)` +
+                        `\n\t\t<span class="fw-bolder">Top 5 Samples</span> under ${entry[0]}` +
+                        `\n\t\t${Object.entries(responseCodeLabelCounts[entry[0]]).map(([key, value], i) => `* ${key} (${value})`).slice(0, 5).join('\n\t\t')}`)
 
                 log('Done.');
                 log('...');
@@ -108,8 +131,8 @@ export default function Generate(file, onCompleted) {
                 });
 
                 const responseCodesMapped = Object.entries(responseCodes)
-                .map(entry => `There are [${entry[1].toLocaleString()}] ${entry[0]}`)
-                .join('\n\t');
+                .map(entry => `\tThere are [${entry[1].toLocaleString()}] ${entry[0]}`)
+                .join('\n');
 
                 log('Getting maximum response time...', true);
 
@@ -120,18 +143,18 @@ export default function Generate(file, onCompleted) {
                 log('...');
 
                 const logs = `
-    Success: ${((responseCodes['200'] / rows) * 100).toFixed(2)}%
-    Fails: ${((errSum / rows) * 100).toFixed(2)}%
+    <span class="fw-bolder text-primary">Success:</span> ${((responseCodes['200'] / rows) * 100).toFixed(2)}%
+    <span class="fw-bolder text-danger">Fails:</span> ${((errSum / rows) * 100).toFixed(2)}%
     -------------------------------
     ${responseCodesMapped}
     -------------------------------
-    Top 5 sample that has the most errors: 
-    ${top5Labels.map((label, i) => `${i+1}. ${label} (${mostFreqResCode[i]})`).join('\n\t')}
+    \t<span class="fw-bolder">Top 5 sample that has the most errors:</span>
+    ${top5Labels.map((label, i) => `\t${i+1}. ${label} (${mostFreqResCode[i]})`).join('\n')}
     -------------------------------
-    Top 3 response codes:
-    ${top3ResponseCodes.join('\n\t')}
+    \t<span class="fw-bolder">Top 3 response codes:</span>
+    ${top3ResponseCodes.join('\n')}
     -------------------------------
-    Max response time: 
+    \t<span class="fw-bolder">Max response time:</span>
     ${maxResponseTime[0]}: ${maxResponseTime[1].toLocaleString()}ms (${((maxResponseTime[1] / 1000) / 60).toFixed(2)} minutes)
                 `
 
